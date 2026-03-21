@@ -1,0 +1,29 @@
+# frontend/.gitignore
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment variables (CRITICAL)
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Production Build
+dist/
+dist-ssr/
+build/
+
+# Testing
+coverage/
+
+# OS & Editor
+.DS_Store
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
