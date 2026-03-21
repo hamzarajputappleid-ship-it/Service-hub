@@ -1,0 +1,112 @@
+@import "tailwindcss";
+
+/* ─── CRITICAL: Enable class-based dark mode for Tailwind v4 ────────────── */
+/* Without this, dark: prefix classes will NOT apply when .dark is on <html> */
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Inter", system-ui, sans-serif;
+
+  /* Primary Accent: Vibrant Teal */
+  --color-primary-50: #e6fcf5;
+  --color-primary-100: #c3fae8;
+  --color-primary-200: #96f2d7;
+  --color-primary-300: #63e6be;
+  --color-primary-400: #38d9a9;
+  --color-primary-500: #20c997; /* Main Teal Accent */
+  --color-primary-600: #12b886;
+  --color-primary-700: #0ca678;
+  --color-primary-800: #099268;
+  --color-primary-900: #087f5b;
+
+  /* Background Theme: Sleek Slate */
+  --color-slate-850: #162032;
+  --color-slate-900: #0f172a;
+}
+
+/* ─── Glassmorphism utilities ───────────────────────────────────────────── */
+@utility glass {
+  background-color: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+@utility glass-dark {
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* ─── Hide scrollbar (cross-browser) ───────────────────────────────────── */
+@utility hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+/* ─── Fade-in animation for page entry ─────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@utility animate-page {
+  animation: fadeInUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ─── Gradient text utility ─────────────────────────────────────────────── */
+@utility gradient-text {
+  background: linear-gradient(135deg, #20c997 0%, #12b886 60%, #0ca678 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Shimmer loading skeleton ──────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+@utility skeleton {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.dark .skeleton {
+  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+  background-size: 800px 100%;
+}
+
+/* ─── Base styles ───────────────────────────────────────────────────────── */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply font-sans antialiased text-slate-800 bg-slate-50 selection:bg-primary-200 selection:text-primary-900;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* Consistent focus-visible rings across all interactive elements */
+  :focus-visible {
+    outline: 2px solid #20c997;
+    outline-offset: 3px;
+    border-radius: 8px;
+  }
+
+  /* Smooth, custom scrollbar for main content on non-mobile */
+  @media (min-width: 768px) {
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    .dark ::-webkit-scrollbar-track { background: #1e293b; }
+    .dark ::-webkit-scrollbar-thumb { background: #475569; }
+    .dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+  }
+}
