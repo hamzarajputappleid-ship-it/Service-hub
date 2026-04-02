@@ -1,10 +1,15 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import dns from 'dns';
+
+// Force Google DNS to fix Atlas SRV lookup issues on this network
+dns.setServers(['8.8.8.8', '8.8.4.4']);
+
 import { createServer } from 'http';
 import { Server as SocketIO, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
+import connectDB from './config/db';
 
 import authRoutes from './routes/auth.routes';
 import adminAuthRoutes from './routes/adminAuth.routes';
@@ -24,10 +29,12 @@ import ratingRoutes from './routes/rating.routes';
 
 dotenv.config();
 
+// Connect to MongoDB
+connectDB();
+
 const app = express();
 const httpServer = createServer(app);
 const port = process.env.PORT || 5000;
-export const prisma = new PrismaClient();
 
 // Socket.IO — real-time messaging
 export const io = new SocketIO(httpServer, {
@@ -101,6 +108,15 @@ app.use('/api/activity', activityRoutes);
 app.use('/api/blogs', blogRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/ratings', ratingRoutes);
+
+// Cloudinary image upload route
+import { upload } from './config/cloudinary';
+app.post('/api/upload', upload.single('image'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No image provided' });
+  }
+  res.status(200).json({ imageUrl: req.file.path });
+});
 
 // Basic health check route
 app.get('/api/health', (req: Request, res: Response) => {

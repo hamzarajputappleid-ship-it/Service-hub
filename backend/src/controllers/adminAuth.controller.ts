@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { prisma } from '../index';
+import { User } from '../models/User.model';
+import { UserActivity } from '../models/UserActivity.model';
 import { generateToken } from '../utils/generateToken';
 
 // @desc    Register a new admin
@@ -15,7 +16,7 @@ export const registerAdmin = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const userExists = await prisma.user.findUnique({ where: { email } });
+    const userExists = await User.findOne({ email });
     if (userExists) {
       res.status(400).json({ message: 'User already exists' });
       return;
@@ -24,13 +25,11 @@ export const registerAdmin = async (req: Request, res: Response): Promise<void> 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const admin = await prisma.user.create({
-      data: {
-        name,
-        email,
-        passwordHash: hashedPassword,
-        role: 'ADMIN',
-      },
+    const admin = await User.create({
+      name,
+      email,
+      passwordHash: hashedPassword,
+      role: 'ADMIN',
     });
 
     res.status(201).json({
@@ -58,9 +57,7 @@ export const loginAdmin = async (req: Request, res: Response): Promise<void> => 
     
     // Match against environment variables
     if (email === adminEmail && password === adminPassword) {
-       const user = await prisma.user.findUnique({
-          where: { email },
-       });
+       const user = await User.findOne({ email });
        if (user) {
          res.json({
             userId: user.userId,
@@ -73,16 +70,14 @@ export const loginAdmin = async (req: Request, res: Response): Promise<void> => 
        }
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await User.findOne({ email });
 
     if (user && user.role === 'ADMIN' && (await bcrypt.compare(password, user.passwordHash))) {
-      const ipAddress = req.ip || req.connection.remoteAddress;
-      await prisma.userActivity.create({
-        data: {
-          userId: user.userId,
-          action: 'ADMIN_LOGIN',
-          ipAddress: ipAddress as string | null
-        }
+      const ipAddress = req.ip ?? req.socket?.remoteAddress ?? undefined;
+      await UserActivity.create({
+        userId: user.userId,
+        action: 'ADMIN_LOGIN',
+        ipAddress: ipAddress
       });
 
       res.json({

@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { prisma } from '../index';
 import { generateToken } from '../utils/generateToken';
+import { User } from '../models/User.model';
+import { WorkerProfile } from '../models/WorkerProfile.model';
+import { UserActivity } from '../models/UserActivity.model';
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -17,9 +19,7 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
     }
 
     // Check if user already exists
-    const userExists = await prisma.user.findUnique({
-      where: { email },
-    });
+    const userExists = await User.findOne({ email });
 
     if (userExists) {
       res.status(400).json({ message: 'User already exists' });
@@ -31,23 +31,19 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Create user
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        passwordHash: hashedPassword,
-        phone: phone || null,
-        role: role || 'CUSTOMER',
-      },
+    const user = await User.create({
+      name,
+      email,
+      passwordHash: hashedPassword,
+      phone: phone || null,
+      role: role || 'CUSTOMER',
     });
 
     // If worker, also create an empty worker profile for them
     if (user.role === 'WORKER') {
-      await prisma.workerProfile.create({
-        data: {
-          userId: user.userId,
-          serviceCategory: 'Uncategorized', // default, to be updated later
-        }
+      await WorkerProfile.create({
+        userId: user.userId,
+        serviceCategory: 'Uncategorized', // default, to be updated later
       });
     }
 
@@ -79,9 +75,7 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
     console.log('Login attempt for password:', JSON.stringify(password));
 
     // Find user by email
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
+    const user = await User.findOne({ email });
     
     console.log('User found in DB for login:', !!user);
     if (user) {
@@ -98,13 +92,11 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
     if (user && (await bcrypt.compare(password, user.passwordHash))) {
 
       // Record login activity
-      const ipAddress = req.ip || req.connection.remoteAddress;
-      await prisma.userActivity.create({
-        data: {
-          userId: user.userId,
-          action: 'LOGIN',
-          ipAddress: ipAddress as string | null
-        }
+      const ipAddress = req.ip ?? req.socket?.remoteAddress ?? undefined;
+      await UserActivity.create({
+        userId: user.userId,
+        action: 'LOGIN',
+        ipAddress: ipAddress
       });
 
       res.json({

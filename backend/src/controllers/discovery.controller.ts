@@ -1,20 +1,13 @@
 import { Request, Response } from 'express';
-import { prisma } from '../index';
+import { WorkerProfile } from '../models/WorkerProfile.model';
+import { User } from '../models/User.model';
 
 // @desc    Get all unique service categories
 // @route   GET /api/discovery/categories
 // @access  Public
 export const getCategories = async (req: Request, res: Response): Promise<void> => {
   try {
-    const categoriesList = await prisma.workerProfile.findMany({
-      select: {
-        serviceCategory: true,
-      },
-      distinct: ['serviceCategory'],
-    });
-
-    const categories = categoriesList.map((c: any) => c.serviceCategory);
-    
+    const categories = await WorkerProfile.distinct('serviceCategory');
     // Filter out potential nulls or empty strings
     res.json(categories.filter((c: string) => c && c.trim() !== ''));
   } catch (error) {
@@ -28,17 +21,15 @@ export const getCategories = async (req: Request, res: Response): Promise<void> 
 // @access  Public
 export const getWorkerDetails = async (req: Request, res: Response): Promise<void> => {
   try {
-    const workerProfile = await prisma.workerProfile.findUnique({
-      where: { workerId: String(req.params.id) },
-      include: {
-        user: { 
-          select: { name: true, email: true, status: true, createdAt: true } 
-        }
-      }
-    });
+    const workerProfile = await WorkerProfile.findOne({ workerId: String(req.params.id) }).lean();
 
     if (workerProfile) {
-      res.json(workerProfile);
+      const user = await User.findOne(
+        { userId: workerProfile.userId },
+        'name email status createdAt'
+      ).lean();
+      
+      res.json({ ...workerProfile, user });
     } else {
       res.status(404).json({ message: 'Worker not found' });
     }

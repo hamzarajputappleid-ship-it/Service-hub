@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { prisma } from '../index';
+import { UserActivity } from '../models/UserActivity.model';
 import { protect } from '../middleware/auth.middleware';
 
 const router = Router();
@@ -7,15 +7,13 @@ const router = Router();
 // POST /api/activity/logout - Record a logout event
 router.post('/logout', protect, async (req: Request, res: Response) => {
   const userId = (req as any).user.userId;
-  const ipAddress = req.ip || req.connection.remoteAddress || null;
+  const ipAddress = req.ip ?? req.socket?.remoteAddress ?? undefined;
 
   try {
-    await prisma.userActivity.create({
-      data: {
-        userId,
-        action: 'LOGOUT',
-        ipAddress: ipAddress as string | null
-      }
+    await UserActivity.create({
+      userId,
+      action: 'LOGOUT',
+      ipAddress: ipAddress
     });
 
     res.json({ message: 'Logout activity recorded' });

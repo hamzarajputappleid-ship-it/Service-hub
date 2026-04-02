@@ -1,5 +1,10 @@
 import { Router, Request, Response } from 'express';
-import { prisma } from '../index';
+import { User } from '../models/User.model';
+import { WorkerProfile } from '../models/WorkerProfile.model';
+import { Booking } from '../models/Booking.model';
+import { Message } from '../models/Message.model';
+import { UserActivity } from '../models/UserActivity.model';
+import { Payment } from '../models/Payment.model';
 import { protect } from '../middleware/auth.middleware';
 
 const router = Router();
@@ -12,17 +17,17 @@ const adminOnly = (req: Request, res: Response, next: any) => {
   next();
 };
 
-const getGrowth = async (modelDelegate: any, whereClause: any = {}) => {
+const getGrowth = async (Model: any, whereClause: any = {}) => {
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
 
-  const currentPeriod = await modelDelegate.count({
-    where: { ...whereClause, createdAt: { gte: thirtyDaysAgo } }
+  const currentPeriod = await Model.countDocuments({
+    ...whereClause, createdAt: { $gte: thirtyDaysAgo }
   });
 
-  const previousPeriod = await modelDelegate.count({
-    where: { ...whereClause, createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } }
+  const previousPeriod = await Model.countDocuments({
+    ...whereClause, createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo }
   });
 
   if (previousPeriod === 0) return currentPeriod > 0 ? 100 : 0;
@@ -33,22 +38,22 @@ const getGrowth = async (modelDelegate: any, whereClause: any = {}) => {
 router.get('/stats', protect, adminOnly, async (req: Request, res: Response) => {
   try {
     const [totalUsers, totalWorkers, totalBookings, totalMessages] = await Promise.all([
-      prisma.user.count(),
-      prisma.workerProfile.count(),
-      prisma.booking.count(),
-      prisma.message.count(),
+      User.countDocuments(),
+      WorkerProfile.countDocuments(),
+      Booking.countDocuments(),
+      Message.countDocuments(),
     ]);
 
-    const bookingsByStatus = await prisma.booking.groupBy({
-      by: ['status'],
-      _count: true,
-    });
+    const bookingsByStatusAgg = await Booking.aggregate([
+      { $group: { _id: "$status", _count: { $sum: 1 } } },
+    ]);
+    const bookingsByStatus = bookingsByStatusAgg.map(i => ({ status: i._id, _count: i._count }));
 
     const [usersGrowth, workersGrowth, bookingsGrowth, completedJobsGrowth] = await Promise.all([
-      getGrowth(prisma.user),
-      getGrowth(prisma.user, { role: 'WORKER' }),
-      getGrowth(prisma.booking),
-      getGrowth(prisma.booking, { status: 'COMPLETED' })
+      getGrowth(User),
+      getGrowth(User, { role: 'WORKER' }),
+      getGrowth(Booking),
+      getGrowth(Booking, { status: 'COMPLETED' })
     ]);
 
     res.json({
@@ -72,14 +77,33 @@ router.get('/stats', protect, adminOnly, async (req: Request, res: Response) => 
 // GET /api/admin/users - list all users
 router.get('/users', protect, adminOnly, async (req: Request, res: Response) => {
   try {
-    const users = await prisma.user.findMany({
-      select: {
-        userId: true, name: true, email: true, role: true, status: true, createdAt: true, lastActiveAt: true,
-        workerProfile: { select: { serviceCategory: true, ratingAverage: true } },
-        _count: { select: { bookingsAsCust: true } }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
+    const usersRaw = await User.find({}).sort({ createdAt: -1 }).lean();
+    
+    // Map worker profiles
+    const workerProfiles = await WorkerProfile.find({}).lean();
+    const workerMap = new Map(workerProfiles.map(w => [w.userId, w]));
+
+    // Get booking counts
+    const bookingsCountAgg = await Booking.aggregate([
+      { $group: { _id: "$customerId", count: { $sum: 1 } } }
+    ]);
+    const bookingCountMap = new Map(bookingsCountAgg.map(b => [b._id, b.count]));
+
+    const users = usersRaw.map(u => ({
+      userId: u.userId, 
+      name: u.name, 
+      email: u.email, 
+      role: u.role, 
+      status: u.status, 
+      createdAt: u.createdAt, 
+      lastActiveAt: u.lastActiveAt,
+      workerProfile: workerMap.has(u.userId) ? {
+        serviceCategory: workerMap.get(u.userId)?.serviceCategory,
+        ratingAverage: workerMap.get(u.userId)?.ratingAverage
+      } : null,
+      _count: { bookingsAsCust: bookingCountMap.get(u.userId) || 0 }
+    }));
+    
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: 'Failed to load users' });
@@ -91,11 +115,12 @@ router.patch('/users/:id/status', protect, adminOnly, async (req: Request, res: 
   const { id } = req.params;
   const { status } = req.body;
   try {
-    const user = await prisma.user.update({
-      where: { userId: id as string },
-      data: { status },
-      select: { userId: true, name: true, status: true }
-    });
+    const user = await User.findOneAndUpdate(
+      { userId: id as string },
+      { status },
+      { new: true }
+    ).select('userId name status');
+    
     res.json(user);
   } catch (error) {
     res.status(500).json({ message: 'Failed to update user status' });
@@ -105,14 +130,26 @@ router.patch('/users/:id/status', protect, adminOnly, async (req: Request, res: 
 // GET /api/admin/bookings - list all bookings
 router.get('/bookings', protect, adminOnly, async (req: Request, res: Response) => {
   try {
-    const bookings = await prisma.booking.findMany({
-      include: {
-        customer: { select: { name: true, email: true } },
-        worker: { select: { name: true, email: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
-    });
+    const bookingsRaw = await Booking.find({})
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
+      
+    const customerIds = bookingsRaw.map(b => b.customerId);
+    const workerIds = bookingsRaw.map(b => b.workerId);
+    
+    const customers = await User.find({ userId: { $in: customerIds } }, 'userId name email').lean();
+    const workers = await User.find({ userId: { $in: workerIds } }, 'userId name email').lean();
+    
+    const customerMap = new Map(customers.map(c => [c.userId, c]));
+    const workerMap = new Map(workers.map(w => [w.userId, w]));
+
+    const bookings = bookingsRaw.map(b => ({
+      ...b,
+      customer: customerMap.get(b.customerId),
+      worker: workerMap.get(b.workerId)
+    }));
+    
     res.json(bookings);
   } catch (error) {
     res.status(500).json({ message: 'Failed to load bookings' });
@@ -122,11 +159,20 @@ router.get('/bookings', protect, adminOnly, async (req: Request, res: Response) 
 // GET /api/admin/activity - Retrieve comprehensive login/logout activity logs
 router.get('/activity', protect, adminOnly, async (req: Request, res: Response) => {
   try {
-    const logs = await prisma.userActivity.findMany({
-      include: { user: { select: { name: true, email: true, role: true } } },
-      orderBy: { timestamp: 'desc' },
-      take: 200
-    });
+    const logsRaw = await UserActivity.find({})
+      .sort({ timestamp: -1 })
+      .limit(200)
+      .lean();
+      
+    const userIds = logsRaw.map(l => l.userId);
+    const users = await User.find({ userId: { $in: userIds } }, 'userId name email role').lean();
+    const userMap = new Map(users.map(u => [u.userId, u]));
+
+    const logs = logsRaw.map(l => ({
+      ...l,
+      user: userMap.get(l.userId)
+    }));
+    
     res.json(logs);
   } catch (error) {
     res.status(500).json({ message: 'Failed to load activity logs' });
@@ -136,18 +182,32 @@ router.get('/activity', protect, adminOnly, async (req: Request, res: Response) 
 // GET /api/admin/payments - Retrieve all platform payments
 router.get('/payments', protect, adminOnly, async (req: Request, res: Response) => {
   try {
-    const payments = await prisma.payment.findMany({
-      include: { 
-        booking: { 
-          select: { 
-            customer: { select: { name: true, email: true } },
-            worker: { select: { name: true, email: true } }
-          }
-        }
-      },
-      orderBy: { timestamp: 'desc' },
-      take: 100
+    const paymentsRaw = await Payment.find({})
+      .sort({ timestamp: -1 })
+      .limit(100)
+      .lean();
+      
+    const bookingIds = paymentsRaw.map(p => p.bookingId);
+    const bookings = await Booking.find({ bookingId: { $in: bookingIds } }, 'bookingId customerId workerId').lean();
+    const bookingMap = new Map(bookings.map(b => [b.bookingId, b]));
+    
+    const customerIds = bookings.map(b => b.customerId);
+    const workerIds = bookings.map(b => b.workerId);
+    
+    const users = await User.find({ userId: { $in: [...customerIds, ...workerIds] } }, 'userId name email').lean();
+    const userMap = new Map(users.map(u => [u.userId, u]));
+
+    const payments = paymentsRaw.map(p => {
+      const b = bookingMap.get(p.bookingId);
+      return {
+        ...p,
+        booking: b ? {
+          customer: userMap.get(b.customerId),
+          worker: userMap.get(b.workerId)
+        } : null
+      };
     });
+    
     res.json(payments);
   } catch (error) {
     res.status(500).json({ message: 'Failed to load payments' });

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { prisma } from '../index';
+import { User } from '../models/User.model';
 
 interface JwtPayload {
   id: string;
@@ -31,16 +31,10 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
       ) as JwtPayload;
 
       // Get user from the token but exclude password
-      req.user = await prisma.user.findUnique({
-        where: { userId: decoded.id },
-        select: {
-          userId: true,
-          name: true,
-          email: true,
-          role: true,
-          status: true,
-        }
-      });
+      req.user = await User.findOne(
+        { userId: decoded.id },
+        'userId name email role status'
+      ).lean();
 
       if (!req.user) {
          res.status(401).json({ message: 'Not authorized, user not found' });

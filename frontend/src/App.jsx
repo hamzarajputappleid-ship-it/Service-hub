@@ -14,6 +14,7 @@ import About from './pages/About'
 import Blog from './pages/Blog'
 import ReportIssue from './pages/ReportIssue'
 import WorkerProfile from './pages/WorkerProfile'
+import Search from './pages/Search'
 
 function DashboardRedirect() {
   const { user, isLoading } = useAuth()
@@ -40,6 +41,7 @@ function App() {
             <Route path="dashboard" element={<DashboardRedirect />} />
             <Route path="customer-dashboard" element={<CustomerDashboard />} />
             <Route path="worker-dashboard" element={<WorkerDashboard />} />
+            <Route path="search" element={<Search />} />
             <Route path="messages" element={<Messages />} />
             <Route path="payment" element={<Payment />} />
             <Route path="payment-success" element={<PaymentSuccess />} />

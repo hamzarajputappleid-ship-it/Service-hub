@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { prisma } from '../index';
+import { ServiceCategory } from '../models/ServiceCategory.model';
 import { protect } from '../middleware/auth.middleware';
 
 const router = Router();
@@ -14,7 +14,7 @@ const adminOnly = (req: Request, res: Response, next: any) => {
 // PUBLIC: GET /api/categories
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const categories = await prisma.serviceCategory.findMany({ orderBy: { name: 'asc' } });
+    const categories = await ServiceCategory.find({}).sort({ name: 1 }).lean();
     res.json(categories);
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch categories' });
@@ -25,12 +25,10 @@ router.get('/', async (req: Request, res: Response) => {
 router.post('/', protect, adminOnly, async (req: Request, res: Response) => {
   const { name, description, icon } = req.body;
   try {
-    const category = await prisma.serviceCategory.create({
-      data: { name, description, icon }
-    });
+    const category = await ServiceCategory.create({ name, description, icon });
     res.status(201).json(category);
   } catch (err: any) {
-    if (err.code === 'P2002') return res.status(400).json({ message: 'Category name already exists' });
+    if (err.code === 11000) return res.status(400).json({ message: 'Category name already exists' });
     res.status(500).json({ message: 'Failed to create category' });
   }
 });
@@ -39,10 +37,11 @@ router.post('/', protect, adminOnly, async (req: Request, res: Response) => {
 router.put('/:id', protect, adminOnly, async (req: Request, res: Response) => {
   const { name, description, icon } = req.body;
   try {
-    const category = await prisma.serviceCategory.update({
-      where: { id: req.params.id as string },
-      data: { name, description, icon }
-    });
+    const category = await ServiceCategory.findOneAndUpdate(
+      { id: req.params.id as string },
+      { name, description, icon },
+      { new: true }
+    );
     res.json(category);
   } catch (err) {
     res.status(500).json({ message: 'Failed to update category' });
@@ -52,7 +51,7 @@ router.put('/:id', protect, adminOnly, async (req: Request, res: Response) => {
 // ADMIN: DELETE /api/categories/:id
 router.delete('/:id', protect, adminOnly, async (req: Request, res: Response) => {
   try {
-    await prisma.serviceCategory.delete({ where: { id: req.params.id as string } });
+    await ServiceCategory.findOneAndDelete({ id: req.params.id as string });
     res.json({ message: 'Category deleted' });
   } catch (err) {
     res.status(500).json({ message: 'Failed to delete category' });

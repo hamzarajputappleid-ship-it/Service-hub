@@ -1,5 +1,8 @@
 import { Request, Response } from 'express';
-import { prisma } from '../index';
+import { Rating } from '../models/Rating.model';
+import { Booking } from '../models/Booking.model';
+import { WorkerProfile } from '../models/WorkerProfile.model';
+import { User } from '../models/User.model';
 
 // @desc    Create a new rating/review for a booking
 // @route   POST /api/ratings
@@ -9,10 +12,7 @@ export const createRating = async (req: Request, res: Response): Promise<void> =
     const { bookingId, ratingScore, reviewText } = req.body;
 
     // Find the booking
-    const booking = await prisma.booking.findUnique({
-      where: { bookingId },
-      include: { rating: true }
-    });
+    const booking = await Booking.findOne({ bookingId }).lean();
 
     if (!booking) {
       res.status(404).json({ message: 'Booking not found' });
@@ -30,33 +30,29 @@ export const createRating = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    if (booking.rating) {
+    const existingRating = await Rating.findOne({ bookingId });
+    if (existingRating) {
       res.status(400).json({ message: 'Booking already has a rating' });
       return;
     }
 
     // Create rating
-    const rating = await prisma.rating.create({
-      data: {
-        bookingId,
-        customerId: req.user.userId,
-        workerId: booking.workerId,
-        ratingScore: Number(ratingScore),
-        reviewText
-      }
+    const rating = await Rating.create({
+      bookingId,
+      customerId: req.user.userId,
+      workerId: booking.workerId,
+      ratingScore: Number(ratingScore),
+      reviewText
     });
 
     // Update worker's average rating
-    const allRatings = await prisma.rating.findMany({
-      where: { workerId: booking.workerId }
-    });
-
+    const allRatings = await Rating.find({ workerId: booking.workerId });
     const average = allRatings.reduce((acc, curr) => acc + curr.ratingScore, 0) / allRatings.length;
 
-    await prisma.workerProfile.update({
-      where: { userId: booking.workerId }, // WorkerId in booking is the userId of the worker
-      data: { ratingAverage: average }
-    });
+    await WorkerProfile.findOneAndUpdate(
+      { userId: booking.workerId }, // WorkerId in booking is the userId of the worker
+      { ratingAverage: average }
+    );
 
     res.status(201).json(rating);
   } catch (error) {
@@ -70,14 +66,21 @@ export const createRating = async (req: Request, res: Response): Promise<void> =
 // @access  Public
 export const getWorkerRatings = async (req: Request, res: Response): Promise<void> => {
   try {
-    const ratings = await prisma.rating.findMany({
-      where: { workerId: String(req.params.workerId) },
-      include: {
-        customer: { select: { name: true } }
-      },
-      orderBy: { timestamp: 'desc' }
-    });
-    res.json(ratings);
+    const ratings = await Rating.find({ workerId: String(req.params.workerId) })
+      .sort({ timestamp: -1 })
+      .lean();
+      
+    // Fetch customer details manually to simulate Prisma include
+    const customerIds = ratings.map(r => r.customerId);
+    const customers = await User.find({ userId: { $in: customerIds } }, 'userId name').lean();
+    const customerMap = new Map(customers.map(c => [c.userId, c]));
+    
+    const ratingsWithCustomers = ratings.map(r => ({
+      ...r,
+      customer: customerMap.get(r.customerId)
+    }));
+      
+    res.json(ratingsWithCustomers);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error fetching worker ratings' });

@@ -1,24 +1,16 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { prisma } from '../index';
+import { User } from '../models/User.model';
 
 // @desc    Get user profile
 // @route   GET /api/users/profile
 // @access  Private
 export const getUserProfile = async (req: Request, res: Response): Promise<void> => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { userId: req.user.userId },
-      select: {
-        userId: true,
-        name: true,
-        email: true,
-        phone: true,
-        role: true,
-        status: true,
-        createdAt: true,
-      }
-    });
+    const user = await User.findOne(
+      { userId: req.user.userId },
+      'userId name email phone role status createdAt'
+    );
 
     if (user) {
       res.json(user);
@@ -36,9 +28,7 @@ export const getUserProfile = async (req: Request, res: Response): Promise<void>
 // @access  Private
 export const updateUserProfile = async (req: Request, res: Response): Promise<void> => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { userId: req.user.userId },
-    });
+    const user = await User.findOne({ userId: req.user.userId });
 
     if (user) {
       const updateData: any = {
@@ -52,17 +42,11 @@ export const updateUserProfile = async (req: Request, res: Response): Promise<vo
         updateData.passwordHash = await bcrypt.hash(req.body.password, salt);
       }
 
-      const updatedUser = await prisma.user.update({
-        where: { userId: req.user.userId },
-        data: updateData,
-        select: {
-          userId: true,
-          name: true,
-          email: true,
-          phone: true,
-          role: true,
-        }
-      });
+      const updatedUser = await User.findOneAndUpdate(
+        { userId: req.user.userId },
+        updateData,
+        { new: true }
+      ).select('userId name email phone role');
 
       res.json(updatedUser);
     } else {

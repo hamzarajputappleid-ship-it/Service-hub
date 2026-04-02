@@ -1,5 +1,9 @@
 import { Request, Response } from 'express';
-import { prisma, io } from '../index';
+import { Booking } from '../models/Booking.model';
+import { User } from '../models/User.model';
+import { Rating } from '../models/Rating.model';
+import { Payment } from '../models/Payment.model';
+import { io } from '../index';
 
 // @desc    Create a new booking
 // @route   POST /api/bookings
@@ -9,36 +13,32 @@ export const createBooking = async (req: Request, res: Response): Promise<void> 
     const { workerId, serviceCategory, scheduledDateTime, serviceAddress, specialInstructions, paymentMode, estimatedCost } = req.body;
 
     // Validate if worker exists and is actually a worker
-    const worker = await prisma.user.findFirst({
-      where: { userId: workerId, role: 'WORKER' }
-    });
+    const worker = await User.findOne({ userId: workerId, role: 'WORKER' }).lean();
 
     if (!worker) {
       res.status(404).json({ message: 'Worker not found' });
       return;
     }
 
-    const booking = await prisma.booking.create({
-      data: {
-        customerId: req.user.userId,
-        workerId,
-        serviceCategory,
-        scheduledDateTime: new Date(scheduledDateTime),
-        serviceAddress,
-        specialInstructions,
-        status: 'PENDING',
-        paymentMode: (paymentMode || 'PAY_LATER') as any,
-        estimatedCost: estimatedCost || null
-      },
-      include: {
-        customer: { select: { name: true } }
-      }
+    const booking = await Booking.create({
+      customerId: req.user.userId,
+      workerId,
+      serviceCategory,
+      scheduledDateTime: new Date(scheduledDateTime),
+      serviceAddress,
+      specialInstructions,
+      status: 'PENDING',
+      paymentMode: (paymentMode || 'PAY_LATER'),
+      estimatedCost: estimatedCost || null
     });
 
-    // Emit real-time notification to the worker
-    io.emit('booking_created', booking);
+    const customer = await User.findOne({ userId: req.user.userId }, 'name').lean();
+    const bookingResponse = { ...booking.toObject(), customer };
 
-    res.status(201).json(booking);
+    // Emit real-time notification to the worker
+    io.emit('booking_created', bookingResponse);
+
+    res.status(201).json(bookingResponse);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error creating booking' });
@@ -50,33 +50,46 @@ export const createBooking = async (req: Request, res: Response): Promise<void> 
 // @access  Private
 export const getMyBookings = async (req: Request, res: Response): Promise<void> => {
   try {
-    let bookings;
+    let bookingsRaw: any[] = [];
 
     if (req.user.role === 'CUSTOMER') {
-      bookings = await prisma.booking.findMany({
-        where: { customerId: req.user.userId },
-        include: {
-          worker: { select: { name: true, email: true, phone: true } },
-          rating: true,
-          payment: true
-        },
-        orderBy: { createdAt: 'desc' }
-      });
+      bookingsRaw = await Booking.find({ customerId: req.user.userId })
+        .sort({ createdAt: -1 })
+        .lean();
     } else if (req.user.role === 'WORKER') {
-      bookings = await prisma.booking.findMany({
-        where: { workerId: req.user.userId },
-        include: {
-          customer: { select: { name: true, email: true, phone: true } },
-          rating: true,
-          payment: true
-        },
-        orderBy: { createdAt: 'desc' }
-      });
+      bookingsRaw = await Booking.find({ workerId: req.user.userId })
+        .sort({ createdAt: -1 })
+        .lean();
     } else if (req.user.role === 'ADMIN') {
-        bookings = await prisma.booking.findMany({
-            orderBy: { createdAt: 'desc' }
-        })
+      bookingsRaw = await Booking.find({})
+        .sort({ createdAt: -1 })
+        .lean();
     }
+
+    // Manual populates to match Prisma includes behaviour
+    const workerIds = [...new Set(bookingsRaw.map(b => b.workerId))];
+    const customerIds = [...new Set(bookingsRaw.map(b => b.customerId))];
+    const bookingIds = bookingsRaw.map(b => b.bookingId);
+
+    const [workers, customers, ratings, payments] = await Promise.all([
+      User.find({ userId: { $in: workerIds } }, 'userId name email phone').lean(),
+      User.find({ userId: { $in: customerIds } }, 'userId name email phone').lean(),
+      Rating.find({ bookingId: { $in: bookingIds } }).lean(),
+      Payment.find({ bookingId: { $in: bookingIds } }).lean()
+    ]);
+
+    const workerMap = new Map(workers.map(w => [w.userId, w]));
+    const customerMap = new Map(customers.map(c => [c.userId, c]));
+    const ratingMap = new Map(ratings.map(r => [r.bookingId, r]));
+    const paymentMap = new Map(payments.map(p => [p.bookingId, p]));
+
+    const bookings = bookingsRaw.map(b => ({
+      ...b,
+      worker: req.user.role === 'CUSTOMER' ? workerMap.get(b.workerId) : undefined,
+      customer: req.user.role === 'WORKER' ? customerMap.get(b.customerId) : undefined,
+      rating: ratingMap.get(b.bookingId) || null,
+      payment: paymentMap.get(b.bookingId) || null
+    }));
 
     res.json(bookings);
   } catch (error) {
@@ -94,9 +107,7 @@ export const updateBookingStatus = async (req: Request, res: Response): Promise<
     const bookingId = String(req.params.id);
 
     // Find the booking
-    const booking = await prisma.booking.findUnique({
-      where: { bookingId }
-    });
+    const booking = await Booking.findOne({ bookingId });
 
     if (!booking) {
       res.status(404).json({ message: 'Booking not found' });
@@ -104,7 +115,6 @@ export const updateBookingStatus = async (req: Request, res: Response): Promise<
     }
 
     // Authorization check
-    // Customers can only cancel their own bookings
     if (req.user.role === 'CUSTOMER') {
       if (booking.customerId !== req.user.userId) {
         res.status(403).json({ message: 'Not authorized to update this booking' });
@@ -116,7 +126,6 @@ export const updateBookingStatus = async (req: Request, res: Response): Promise<
       }
     }
 
-    // Workers can update status of their assigned bookings
     if (req.user.role === 'WORKER') {
       if (booking.workerId !== req.user.userId) {
         res.status(403).json({ message: 'Not authorized to update this booking' });
@@ -130,14 +139,21 @@ export const updateBookingStatus = async (req: Request, res: Response): Promise<
       updateData.estimatedCost = estimatedCost;
     }
 
-    const updatedBooking = await prisma.booking.update({
-      where: { bookingId },
-      data: updateData,
-      include: {
-        worker: { select: { name: true } },
-        customer: { select: { name: true } }
-      }
-    });
+    const updatedBookingRaw = await Booking.findOneAndUpdate(
+      { bookingId },
+      updateData,
+      { new: true }
+    ).lean();
+    
+    // Fill in worker and customer for socket response
+    const worker = await User.findOne({ userId: updatedBookingRaw?.workerId }, 'name').lean();
+    const customer = await User.findOne({ userId: updatedBookingRaw?.customerId }, 'name').lean();
+    
+    const updatedBooking = {
+      ...updatedBookingRaw,
+      worker,
+      customer
+    };
 
     // Emit real-time notification for status change
     io.emit('booking_status_updated', updatedBooking);

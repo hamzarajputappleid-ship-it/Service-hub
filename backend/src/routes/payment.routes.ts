@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import Stripe from 'stripe';
-import { prisma } from '../index';
+import { Booking } from '../models/Booking.model';
+import { Payment } from '../models/Payment.model';
 import { protect } from '../middleware/auth.middleware';
 
 const router = Router();
@@ -28,9 +29,7 @@ router.post('/create-intent', protect, async (req: Request, res: Response) => {
   try {
     // Verify booking belongs to this user
     const userId = (req as any).user.userId;
-    const booking = await prisma.booking.findFirst({
-      where: { bookingId: bookingId as string, customerId: userId },
-    });
+    const booking = await Booking.findOne({ bookingId: bookingId as string, customerId: userId });
 
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found or access denied' });
@@ -50,21 +49,17 @@ router.post('/create-intent', protect, async (req: Request, res: Response) => {
     });
 
     // Upsert a payment record in the database
-    await prisma.payment.upsert({
-      where: { bookingId: bookingId as string },
-      create: {
+    await Payment.findOneAndUpdate(
+      { bookingId: bookingId as string },
+      {
         bookingId: bookingId as string,
         amount,
         paymentMethod: 'card',
         paymentStatus: 'PENDING',
         transactionId: paymentIntent.id,
       },
-      update: {
-        amount,
-        transactionId: paymentIntent.id,
-        paymentStatus: 'PENDING',
-      },
-    });
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     res.json({ clientSecret: paymentIntent.client_secret, intentId: paymentIntent.id });
   } catch (error: any) {
@@ -83,10 +78,11 @@ router.post('/confirm', protect, async (req: Request, res: Response) => {
     const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
     const status = intent.status === 'succeeded' ? 'SUCCESS' : 'FAILED';
 
-    const payment = await prisma.payment.update({
-      where: { bookingId: bookingId as string },
-      data: { paymentStatus: status },
-    });
+    const payment = await Payment.findOneAndUpdate(
+      { bookingId: bookingId as string },
+      { paymentStatus: status },
+      { new: true }
+    );
 
     res.json({ payment, status });
   } catch (error: any) {
@@ -101,7 +97,7 @@ router.post('/confirm', protect, async (req: Request, res: Response) => {
 router.get('/:bookingId', protect, async (req: Request, res: Response) => {
   const { bookingId } = req.params;
   try {
-    const payment = await prisma.payment.findUnique({ where: { bookingId: bookingId as string } });
+    const payment = await Payment.findOne({ bookingId: bookingId as string });
     if (!payment) return res.status(404).json({ message: 'No payment found for this booking' });
     res.json(payment);
   } catch (error) {

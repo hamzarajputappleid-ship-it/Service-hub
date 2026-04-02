@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../utils/api'
 import {
   Search, Star, ArrowRight, UserCircle,
@@ -40,6 +40,7 @@ const ALL_CATEGORIES = [
 ]
 
 export default function Home() {
+  const navigate = useNavigate()
   const [workers, setWorkers] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -59,27 +60,45 @@ export default function Home() {
     <div className="flex flex-col gap-16 py-8">
       
       {/* Hero Section */}
-      <section className="text-center max-w-3xl mx-auto space-y-8 mt-10">
-        <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight text-slate-800 dark:text-white transition-colors duration-300">
-          Find the perfect <Highlight>professional</Highlight> for any job.
-        </h1>
-        <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed transition-colors duration-300">
-          Connect with trusted experts in your area. From plumbing to web design, easily 
-          discover, book, and review top-rated talent with a <Highlight>guaranteed</Highlight> smooth experience.
-        </p>
+      <section className="text-center w-full max-w-6xl mx-auto space-y-8 mt-6 pt-24 pb-28 px-4 sm:px-8 rounded-[3rem] relative overflow-hidden bg-slate-900 shadow-2xl border border-slate-700/50">
         
-        {/* Search Bar (Highly Rounded) */}
-        <div className="relative max-w-xl mx-auto mt-10">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <Search className="h-6 w-6 text-slate-400 dark:text-slate-500" />
-          </div>
-          <input
-            type="text"
-            className="w-full pl-12 pr-4 py-4 rounded-3xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20 text-lg transition-all"
-            placeholder="What service do you need?"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        {/* Cloudinary Background Image */}
+        <div 
+          className="absolute inset-0 opacity-60 mix-blend-screen pointer-events-none" 
+          style={{ 
+            backgroundImage: `url('https://res.cloudinary.com/dwopxfwzf/image/upload/v1775156053/servicehub/assets/hero_bg.jpg')`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        />
+        {/* Gradient Overlay for text readability at the bottom */}
+        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-slate-900 to-transparent pointer-events-none" />
+        
+        {/* Top radial gradient overlay for focus */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-slate-900/30 to-slate-900/80 pointer-events-none" />
+
+        <div className="relative z-10">
+          <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight text-white drop-shadow-lg transition-colors duration-300">
+            Find the perfect <Highlight>professional</Highlight> for any job.
+          </h1>
+          <p className="text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed transition-colors duration-300 mt-8 drop-shadow">
+            Connect with trusted experts in your area. From plumbing to web design, easily 
+            discover, book, and review top-rated talent with a <Highlight>guaranteed</Highlight> smooth experience.
+          </p>
+          
+          {/* Search Bar (Highly Rounded) */}
+          <form onSubmit={(e) => { e.preventDefault(); if (searchQuery.trim()) navigate(`/search?q=${encodeURIComponent(searchQuery)}`); }} className="relative max-w-xl mx-auto mt-12 mb-4">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Search className="h-6 w-6 text-slate-400" />
+            </div>
+            <input
+              type="text"
+              className="w-full pl-12 pr-4 py-4 rounded-3xl border-2 border-slate-600 bg-slate-800/80 text-white placeholder-slate-400 shadow-xl focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/30 backdrop-blur-sm text-lg transition-all"
+              placeholder="What service do you need?"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </form>
         </div>
       </section>
 
@@ -102,6 +121,7 @@ export default function Home() {
               return (
                 <div
                   key={cat.name}
+                  onClick={() => navigate('/search?category=' + encodeURIComponent(cat.name))}
                   className="snap-start shrink-0 w-40 group relative flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-sm hover:shadow-xl hover:scale-110 hover:-translate-y-2 hover:border-primary-300 dark:hover:border-primary-500 transition-all duration-300 cursor-pointer overflow-hidden"
                 >
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-b from-slate-50/80 to-white dark:from-slate-700/30 dark:to-slate-800" />

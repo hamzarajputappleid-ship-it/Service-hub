@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { prisma } from '../index';
+import { SupportTicket } from '../models/SupportTicket.model';
 import { protect } from '../middleware/auth.middleware';
 
 const router = Router();
@@ -11,14 +11,12 @@ router.post('/report', async (req: Request, res: Response) => {
     return res.status(400).json({ message: 'type, subject, and description are required' });
   }
   try {
-    const ticket = await prisma.supportTicket.create({
-      data: {
-        type,
-        subject,
-        description,
-        userId: userId || null,
-        status: 'OPEN',
-      }
+    const ticket = await SupportTicket.create({
+      type,
+      subject,
+      description,
+      userId: userId || null,
+      status: 'OPEN',
     });
     res.status(201).json({
       message: 'Ticket submitted successfully',
@@ -34,9 +32,9 @@ router.post('/report', async (req: Request, res: Response) => {
 // GET /api/support/tickets — admin can view all tickets
 router.get('/tickets', protect, async (req: Request, res: Response) => {
   try {
-    const tickets = await prisma.supportTicket.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
+    const tickets = await SupportTicket.find({})
+      .sort({ createdAt: -1 })
+      .lean();
     res.json(tickets);
   } catch (error) {
     res.status(500).json({ message: 'Failed to load tickets' });
