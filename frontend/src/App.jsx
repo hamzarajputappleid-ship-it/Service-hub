@@ -20,9 +20,10 @@ function DashboardRedirect() {
   const { user, isLoading } = useAuth()
   if (isLoading) return <div className="flex items-center justify-center h-80 text-slate-400">Loading...</div>
   if (!user) return <Navigate to="/login" replace />
-  // Admins go to the new Admin Panel router (on port 5174)
+  // Admins go to the new Admin Panel router
   if (user.role === 'ADMIN') {
-    window.location.href = 'http://localhost:5174/'
+    const adminUrl = import.meta.env.VITE_ADMIN_URL || 'http://localhost:5174/';
+    window.location.href = adminUrl;
     return null
   }
   return user.role === 'WORKER' ? <Navigate to="/worker-dashboard" replace /> : <Navigate to="/customer-dashboard" replace />

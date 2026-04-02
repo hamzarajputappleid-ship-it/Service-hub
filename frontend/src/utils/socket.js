@@ -4,7 +4,8 @@ let socket = null
 
 export function getSocket(token) {
   if (!socket) {
-    socket = socketIO('http://localhost:5000', {
+    const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    socket = socketIO(BASE_URL, {
       auth: { token },
       transports: ['websocket'],
       autoConnect: true,
