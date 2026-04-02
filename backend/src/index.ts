@@ -123,7 +123,12 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.status(200).json({ status: 'ok', message: 'Service Hub API is running' });
 });
 
-// Start server
-httpServer.listen(port, () => {
-  console.log(`Server running on port ${port} with Socket.IO`);
-});
+// Start server locally only if not in production
+if (process.env.NODE_ENV !== 'production') {
+  httpServer.listen(port, () => {
+    console.log(`Server running on port ${port} with Socket.IO`);
+  });
+}
+
+// Export for Vercel
+export default app;
