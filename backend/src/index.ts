@@ -118,9 +118,13 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
   res.status(200).json({ imageUrl: req.file.path });
 });
 
-// Basic health check route
+// Basic health check routes
 app.get('/api/health', (req: Request, res: Response) => {
   res.status(200).json({ status: 'ok', message: 'Service Hub API is running' });
+});
+
+app.get('/', (req: Request, res: Response) => {
+  res.status(200).send('Service Hub Backend is Live on Vercel!');
 });
 
 // Start server locally only if not in production
