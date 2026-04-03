@@ -3,9 +3,9 @@ import { MessageCircle, X, Send, Bot, User } from 'lucide-react'
 import { api } from '../utils/api'
 
 const QUICK_PROMPTS = [
-  'Can I be like Johnny SIns?',
-  'Do I like Lesbians?',
-  'How do I ungay myself?',
+  'How do I hire?',
+  'Do I need to pay first?',
+  'Is this a reliable platform?',
 ]
 
 export default function ChatbotWidget() {
@@ -15,7 +15,7 @@ export default function ChatbotWidget() {
   const [messages, setMessages] = useState([
     {
       role: 'model',
-      text: '👋 Hi! I\'m the Hamza ToPi. Do not Fuck With me,'
+      text: '👋 Hi! I\'m the ServGPT, How can I help you?'
     }
   ])
   const bottomRef = useRef(null)
@@ -40,9 +40,9 @@ export default function ChatbotWidget() {
         .map(m => ({ role: m.role, text: m.text }))
 
       const data = await api.post('/api/chatbot/message', { message: msg, history })
-      setMessages(prev => [...prev, { role: 'model', text: data.reply || 'Hat Thaari bahan ki tet' }])
+      setMessages(prev => [...prev, { role: 'model', text: data.reply || 'Sorry, I am not able to understand you.' }])
     } catch (err) {
-      const fallback = '⚠️ You are Gay! Pay First.'
+      const fallback = '⚠️ I can\'t understand what you ask.'
       setMessages(prev => [...prev, { role: 'model', text: err.message || fallback }])
     } finally {
       setIsLoading(false)

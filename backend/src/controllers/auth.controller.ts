@@ -4,7 +4,9 @@ import { generateToken } from '../utils/generateToken';
 import { User } from '../models/User.model';
 import { WorkerProfile } from '../models/WorkerProfile.model';
 import { UserActivity } from '../models/UserActivity.model';
+import { OAuth2Client } from 'google-auth-library';
 
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 // @desc    Register a new user
 // @route   POST /api/auth/register
 // @access  Public
@@ -112,5 +114,73 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error during login' });
+  }
+};
+
+// @desc    Authenticate with Google OAuth
+// @route   POST /api/auth/google
+// @access  Public
+export const googleLogin = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token } = req.body;
+    
+    // Verify the Google token
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    
+    const payload = ticket.getPayload();
+    if (!payload) {
+      res.status(401).json({ message: 'Invalid Google token' });
+      return;
+    }
+
+    const { email, name, picture } = payload;
+    if (!email) {
+      res.status(401).json({ message: 'Google account missing email' });
+      return;
+    }
+
+    // Attempt to find existing user or create a new one
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      // Create new user defaulted as CUSTOMER with random password
+      const randomPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(randomPassword, salt);
+      
+      user = await User.create({
+        name: name || 'Google User',
+        email,
+        passwordHash: hashedPassword,
+        role: 'CUSTOMER',
+      });
+    }
+
+    if (user.status === 'SUSPENDED') {
+      res.status(403).json({ message: 'Your account has been suspended. Please contact support.' });
+      return;
+    }
+
+    // Record login activity
+    const ipAddress = req.ip ?? req.socket?.remoteAddress ?? undefined;
+    await UserActivity.create({
+      userId: user.userId,
+      action: 'LOGIN',
+      ipAddress: ipAddress
+    });
+
+    res.json({
+      userId: user.userId,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      token: generateToken(user.userId, user.role),
+    });
+  } catch (error) {
+    console.error('Google login error:', error);
+    res.status(500).json({ message: 'Server error during Google authentication' });
   }
 };

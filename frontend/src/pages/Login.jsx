@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Wrench, Mail, Lock, ArrowRight, Chrome } from 'lucide-react'
+import { GoogleLogin } from '@react-oauth/google'
+import { Wrench, Mail, Lock, ArrowRight } from 'lucide-react'
 import { api } from '../utils/api'
 
 export default function Login() {
@@ -140,15 +141,28 @@ export default function Login() {
               </div>
             </div>
 
-            <div className="mt-6">
-              <button
-                type="button"
-                onClick={() => alert("Google Authentication requires Google Cloud Console (GCP) credentials to be configured in the project settings. This button is currently a UI placeholder.")}
-                className="w-full inline-flex justify-center items-center py-2.5 px-4 border border-slate-300 dark:border-slate-600 rounded-xl shadow-sm bg-white dark:bg-slate-700/50 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition active:scale-[0.98]"
-              >
-                <Chrome className="w-5 h-5 text-red-500 mr-2" />
-                Google
-              </button>
+            <div className="mt-6 flex justify-center w-full">
+              <GoogleLogin
+                onSuccess={async (credentialResponse) => {
+                  setIsLoading(true);
+                  setError('');
+                  try {
+                    const data = await api.post('/api/auth/google', { token: credentialResponse.credential });
+                    login({ id: data.userId, name: data.name, email: data.email, role: data.role }, data.token);
+                    navigate('/dashboard');
+                  } catch(err) {
+                    setError(err.message || 'Error communicating with Google Login');
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }}
+                onError={() => {
+                  setError('Google Authentication Failed');
+                }}
+                shape="pill"
+                size="large"
+                logo_alignment="center"
+              />
             </div>
           </div>
         </div>
