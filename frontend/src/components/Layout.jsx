@@ -151,7 +151,7 @@ export default function Layout() {
 
           {/* Bottom bar */}
           <div className="border-t border-slate-100 dark:border-slate-800 pt-6 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-400 dark:text-slate-500">
-            <p>© {new Date().getFullYear()} ServiceHub. All rights reserved. Built with ❤️ by Ibaad ur Rehman.</p>
+            <p>© {new Date().getFullYear()} ServiceHub. All rights reserved. Built by Ibaad ur Rehman.</p>
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700">
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
               All systems operational
