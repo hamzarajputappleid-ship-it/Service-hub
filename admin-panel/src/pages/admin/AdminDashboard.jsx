@@ -206,7 +206,7 @@ export default function AdminDashboard() {
               <Doughnut data={doughnutData} options={doughnutOpts} />
             </div>
             {/* Center Text overlay */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-2 lg:-ml-[100px]">
+            <div className={`absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-2 ${stats.totalBookings > 0 ? 'lg:-ml-[100px]' : 'lg:-ml-[60px]'}`}>
               <span className="text-3xl font-black text-slate-900 dark:text-white">{stats.totalBookings}</span>
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total</span>
             </div>
