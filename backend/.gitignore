@@ -28,4 +28,6 @@ coverage/
 # OS & Editor
 .DS_Store
 .vscode/
-.idea/
+.idea/node_modules
+dist
+.env

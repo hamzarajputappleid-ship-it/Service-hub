@@ -22,7 +22,7 @@ export default function AdminLogin() {
         password: formData.password.trim()
       }
 
-      const data = await api.post('/api/auth/login', payload)
+      const data = await api.post('/api/admin/auth/login', payload)
       
       if (data.role !== 'ADMIN') {
         throw new Error('Access denied: Administrator privileges required.')

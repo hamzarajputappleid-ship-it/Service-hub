@@ -57,17 +57,28 @@ export const loginAdmin = async (req: Request, res: Response): Promise<void> => 
     
     // Match against environment variables
     if (email === adminEmail && password === adminPassword) {
-       const user = await User.findOne({ email });
-       if (user) {
-         res.json({
-            userId: user.userId,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            token: generateToken(user.userId, user.role),
+       let user = await User.findOne({ email });
+       
+       // Auto-seed the admin if they don't exist in the database yet
+       if (!user) {
+         const salt = await bcrypt.genSalt(10);
+         const hashedPassword = await bcrypt.hash(password, salt);
+         user = await User.create({
+           name: 'System Admin',
+           email: adminEmail,
+           passwordHash: hashedPassword,
+           role: 'ADMIN',
          });
-         return;
        }
+
+       res.json({
+          userId: user.userId,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          token: generateToken(user.userId, user.role),
+       });
+       return;
     }
 
     const user = await User.findOne({ email });

@@ -26,4 +26,6 @@ coverage/
 .idea/
 *.suo
 *.ntvs*
-*.njsproj
+*.njsprojnode_modules
+dist
+.env
