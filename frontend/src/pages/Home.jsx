@@ -19,24 +19,15 @@ const Highlight = ({ children }) => (
 const ALL_CATEGORIES = [
   { name: 'Plumber',          icon: Wrench,      color: 'text-blue-500',    bg: 'bg-blue-50 dark:bg-blue-900/20' },
   { name: 'Electrician',      icon: Zap,         color: 'text-yellow-500',  bg: 'bg-yellow-50 dark:bg-yellow-900/20' },
-  { name: 'Web Developer',    icon: Globe,       color: 'text-teal-500',    bg: 'bg-teal-50 dark:bg-teal-900/20' },
-  { name: 'Civil Engineer',   icon: HardHat,     color: 'text-orange-500',  bg: 'bg-orange-50 dark:bg-orange-900/20' },
   { name: 'Painter',          icon: Paintbrush,  color: 'text-pink-500',    bg: 'bg-pink-50 dark:bg-pink-900/20' },
-  { name: 'Barber & Salon',   icon: Scissors,    color: 'text-purple-500',  bg: 'bg-purple-50 dark:bg-purple-900/20' },
   { name: 'Moving & Delivery',icon: Truck,       color: 'text-slate-500',   bg: 'bg-slate-100 dark:bg-slate-700/50' },
   { name: 'Tutor',            icon: BookOpen,    color: 'text-indigo-500',  bg: 'bg-indigo-50 dark:bg-indigo-900/20' },
-  { name: 'Photographer',     icon: Camera,      color: 'text-rose-500',    bg: 'bg-rose-50 dark:bg-rose-900/20' },
   { name: 'Catering & Chef',  icon: ChefHat,     color: 'text-amber-500',   bg: 'bg-amber-50 dark:bg-amber-900/20' },
-  { name: 'Healthcare',       icon: HeartPulse,  color: 'text-red-500',     bg: 'bg-red-50 dark:bg-red-900/20' },
   { name: 'Home Renovation',  icon: HomeIcon,    color: 'text-cyan-500',    bg: 'bg-cyan-50 dark:bg-cyan-900/20' },
   { name: 'Gardening',        icon: Leaf,        color: 'text-green-500',   bg: 'bg-green-50 dark:bg-green-900/20' },
-  { name: 'IT Support',       icon: Monitor,     color: 'text-violet-500',  bg: 'bg-violet-50 dark:bg-violet-900/20' },
   { name: 'Security',         icon: Shield,      color: 'text-slate-600',   bg: 'bg-slate-100 dark:bg-slate-700/50' },
   { name: 'Interior Design',  icon: Sofa,        color: 'text-fuchsia-500', bg: 'bg-fuchsia-50 dark:bg-fuchsia-900/20' },
   { name: 'Auto Mechanic',    icon: Car,         color: 'text-zinc-500',    bg: 'bg-zinc-100 dark:bg-zinc-800' },
-  { name: 'Babysitter',       icon: Baby,        color: 'text-pink-400',    bg: 'bg-pink-50 dark:bg-pink-900/20' },
-  { name: 'Personal Trainer', icon: Dumbbell,    color: 'text-lime-600',    bg: 'bg-lime-50 dark:bg-lime-900/20' },
-  { name: 'Graphic Designer', icon: PenTool,     color: 'text-sky-500',     bg: 'bg-sky-50 dark:bg-sky-900/20' },
 ]
 
 export default function Home() {
@@ -57,10 +48,10 @@ export default function Home() {
   )
 
   return (
-    <div className="flex flex-col gap-16 py-8">
+    <div className="flex flex-col">
       
       {/* Hero Section */}
-      <section className="text-center w-full max-w-6xl mx-auto space-y-8 mt-6 pt-24 pb-28 px-4 sm:px-8 rounded-[3rem] relative overflow-hidden bg-slate-900 shadow-2xl border border-slate-700/50">
+      <section className="text-center w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] space-y-8 pt-32 pb-36 px-4 sm:px-8 overflow-hidden bg-slate-900 shadow-2xl border-b border-slate-700/50">
         
         {/* Cloudinary Background Image */}
         <div 
@@ -102,7 +93,9 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Categories Grid (Highly Rounded Components) */}
+      {/* Main Content Container for the rest of the page */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-16 space-y-24">
+        {/* Categories Grid (Highly Rounded Components) */}
       <section className="space-y-6">
         <div className="flex justify-between items-end">
           <h2 className="text-3xl font-bold tracking-tight">Popular <Highlight>Categories</Highlight></h2>
@@ -195,6 +188,7 @@ export default function Home() {
         </div>
       </section>
 
+      </div>
     </div>
   )
 }

@@ -44,9 +44,8 @@ export default function Layout() {
           <div className="flex justify-between items-center h-16">
 
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-2 text-primary-600 hover:text-primary-700 transition">
-              <Wrench className="w-6 h-6" />
-              <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">ServiceHub</span>
+            <Link to="/" className="flex items-center hover:opacity-90 transition">
+              <img src="/logo.png" alt="ServiceHub" className="h-40 w-auto object-contain" />
             </Link>
 
             {/* Navigation Links */}
@@ -97,7 +96,7 @@ export default function Layout() {
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 animate-page">
+      <main className="flex-1 animate-page">
         <Outlet />
       </main>
 
@@ -107,9 +106,8 @@ export default function Layout() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
             {/* Brand */}
             <div className="sm:col-span-2 lg:col-span-1">
-              <div className="flex items-center gap-2 text-primary-600 mb-3">
-                <Wrench className="w-5 h-5" />
-                <span className="font-bold text-lg text-slate-900 dark:text-white">ServiceHub</span>
+              <div className="flex items-center mb-8">
+                <img src="/logo.png" alt="ServiceHub" className="h-24 w-auto object-contain" />
               </div>
               <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                 Pakistan's trusted platform to discover, book, and pay for professional services — all in one place.

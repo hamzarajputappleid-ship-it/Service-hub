@@ -7,10 +7,10 @@ import {
 
 // Using the same category list structure (we could decouple this to a constants file, but for speed we redefine here or export from Home. Alternatively, I will just list names)
 const CATEGORIES = [
-  'Plumber', 'Electrician', 'Web Developer', 'Civil Engineer', 'Painter',
-  'Barber & Salon', 'Moving & Delivery', 'Tutor', 'Photographer', 'Catering & Chef',
-  'Healthcare', 'Home Renovation', 'Gardening', 'IT Support', 'Security',
-  'Interior Design', 'Auto Mechanic', 'Babysitter', 'Personal Trainer', 'Graphic Designer',
+  'Plumber', 'Electrician', 'Painter',
+  'Moving & Delivery', 'Tutor', 'Catering & Chef',
+  'Home Renovation', 'Gardening', 'Security',
+  'Interior Design', 'Auto Mechanic',
 ];
 
 export default function Search() {
